@@ -7,11 +7,13 @@ function EditMenu() {
     title: '',
     price: '',
     type: '',
-    menuType: '', // Added menuType field
+    menuType: '',
     categories: []
   });
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [existingImage, setExistingImage] = useState(''); // Track the existing image URL
+  const [imageChanged, setImageChanged] = useState(false); // Track if the image was changed
 
   const navigate = useNavigate();
   const {id} = useParams();
@@ -48,6 +50,7 @@ function EditMenu() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setImage(file);
+      setImageChanged(true); // Mark that the image has been changed
       
       // Create image preview
       const reader = new FileReader();
@@ -59,7 +62,7 @@ function EditMenu() {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validation check for required fields
@@ -88,33 +91,46 @@ function EditMenu() {
       return;
     }
     
-    if (!image) {
+    // Only require a new image if there's no existing image or the image has been changed
+    if (!imagePreview && !existingImage) {
       alert('Please upload an image');
       return;
     }
     
-    // Prepare the data to be submitted
-    const formData = {
-      ...itemData,
-      image
-    };
+    // Create a FormData object to handle file uploads
+    const formData = new FormData();
+    formData.append('title', itemData.title);
+    formData.append('price', itemData.price);
+    formData.append('type', itemData.type);
+    formData.append('menuType', itemData.menuType);
+    formData.append('categories', JSON.stringify(itemData.categories));
     
-    // Log the data to console
-    console.log('Menu Item Data:', formData);
-    
-    // Show success message
-    alert('Menu item updated successfully!');
-    
-    // Reset form (optional)
-    setItemData({
-      title: '',
-      price: '',
-      type: '',
-      menuType: '',
-      categories: []
-    });
-    setImage(null);
-    setImagePreview(null);
+    // Only append image if a new one was selected
+    if (imageChanged && image) {
+      formData.append('image', image);
+    }
+
+    try {
+      // Send the update request
+      const response = await fetch(`http://localhost:4000/api/staff/update-menu/${id}`, {
+        method: 'PUT',
+        body: formData,
+        // Don't set Content-Type header when sending FormData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update menu: ${response.status} ${response.statusText}`);
+      }
+
+      // Show success message
+      alert('Menu item updated successfully!');
+      
+      // Navigate back
+      navigate(-1);
+    } catch (error) {
+      console.error('Error updating menu item:', error.message);
+      alert(`Failed to update menu item: ${error.message}`);
+    }
   };
 
   const handleGetSingleMenu = async () => {
@@ -142,6 +158,12 @@ function EditMenu() {
           menuType: data.menuType || '', // Set menuType from API or default to empty
           categories: data.categories.map((cat) => cat.toLowerCase()),
         });
+        
+        // Set the existing image URL if available
+        if (data.image) {
+          setExistingImage(data.image);
+          setImagePreview(data.image); // Use the existing image URL as the preview
+        }
       } else {
         console.error('Unexpected data structure from API:', data);
       }
@@ -152,7 +174,7 @@ function EditMenu() {
   
   // Categories to choose from with food menu names
   const availableCategories = [
-    'Momo', 'Salads', 'Soups', 'Burgers', 'Pasta', 'Pizza', 
+    "Momo", 'Salads', 'Soups', 'Burgers', 'Pasta', 'Pizza', 
     'Seafood', 'Main Courses', 'Desserts', 'Sandwiches',
     'Vegan', 'Gluten-Free', 'Chowmein', 'Specials',
     "Cold-drinks", "Hot-drinks"
@@ -165,7 +187,7 @@ function EditMenu() {
   const menuTypes = ['normal', 'todays-special'];
 
   useEffect(() => {
-    //get menu details
+    // Get menu details
     handleGetSingleMenu();
   }, [id]);
 
@@ -238,7 +260,7 @@ function EditMenu() {
                   </select>
                 </div>
                 
-                {/* Menu Type - newly added */}
+                {/* Menu Type */}
                 <div>
                   <label htmlFor="menuType" className="block text-sm font-medium text-gray-700 mb-1">Menu Type*</label>
                   <select
@@ -276,12 +298,22 @@ function EditMenu() {
                     
                     {imagePreview && (
                       <div className="relative h-16 w-16 rounded-lg overflow-hidden border border-gray-300">
-                        <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                        {/* Use different rendering based on whether it's a new or existing image */}
+                        {imageChanged ? (
+                          <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
+                        ) : (
+                          <img src={existingImage} alt="Existing" className="h-full w-full object-cover" />
+                        )}
                         <button 
                           type="button" 
                           onClick={() => {
                             setImage(null);
                             setImagePreview(null);
+                            // If there was an existing image and user removes the preview,
+                            // mark it as changed (to be removed)
+                            if (existingImage) {
+                              setImageChanged(true);
+                            }
                           }}
                           className="absolute top-0 right-0 bg-gray-800 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs"
                         >
