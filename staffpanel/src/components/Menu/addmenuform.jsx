@@ -1,17 +1,19 @@
 import React, { useState, useRef } from 'react';
 import Nav from '../Nav';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 
 function CreateItem() {
   const [itemData, setItemData] = useState({
     title: '',
     price: '',
     type: '',
-    menuType: '', // Changed to empty string as default
+    menuType: '',
     categories: [],
     image: ''
   });
   
+  const [errors, setErrors] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -24,6 +26,14 @@ function CreateItem() {
       ...itemData,
       [name]: value
     });
+    
+    // Clear error for this field when user types
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
+    }
   };
 
   // Handle image upload
@@ -34,6 +44,8 @@ function CreateItem() {
       const reader = new FileReader();
       reader.onload = () => {
         setImagePreview(reader.result);
+        // Show toast for successful image upload
+        toast.success('Image uploaded successfully');
       };
       reader.readAsDataURL(file);
       
@@ -42,6 +54,14 @@ function CreateItem() {
         ...itemData,
         image: file
       });
+      
+      // Clear image error if it exists
+      if (errors.image) {
+        setErrors({
+          ...errors,
+          image: ''
+        });
+      }
     }
   };
 
@@ -55,6 +75,8 @@ function CreateItem() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // Show toast for image removal
+    toast.success('Image removed');
   };
 
   // Handle category selection
@@ -65,52 +87,137 @@ function CreateItem() {
         ...itemData,
         categories: itemData.categories.filter((cat) => cat !== categoryLower)
       });
+      // Show toast for category removal
+      toast.success(`Removed ${category} category`);
     } else {
       setItemData({
         ...itemData,
         categories: [...itemData.categories, categoryLower]
       });
+      // Show toast for category addition
+      toast.success(`Added ${category} category`);
+      
+      // Clear categories error if it exists
+      if (errors.categories) {
+        setErrors({
+          ...errors,
+          categories: ''
+        });
+      }
     }
+  };
+
+  // Validate form fields
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Check title (trim to handle spaces)
+    if (!itemData.title.trim()) {
+      newErrors.title = 'Dish name is required';
+    }
+    
+    // Check price
+    if (!itemData.price) {
+      newErrors.price = 'Price is required';
+    } else if (parseFloat(itemData.price) <= 0) {
+      newErrors.price = 'Price must be greater than zero';
+    }
+    
+    // Check type
+    if (!itemData.type) {
+      newErrors.type = 'Food type is required';
+    }
+    
+    // Check menuType
+    if (!itemData.menuType) {
+      newErrors.menuType = 'Menu type is required';
+    }
+    
+    // Check categories
+    if (itemData.categories.length === 0) {
+      newErrors.categories = 'At least one category is required';
+    }
+    
+    // Check image
+    if (!itemData.image) {
+      newErrors.image = 'Image is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    // Validation check for required fields
-    if (!itemData.title || !itemData.price || !itemData.type || itemData.categories.length === 0 || !itemData.menuType || !itemData.image) {
-      alert('All fields including image are required');
+  
+    // Validate form
+    if (!validateForm()) {
+      // Show toast for validation errors with specific missing fields
+      const errorFields = Object.keys(errors).map(field => {
+        // Format field names for better readability
+        const formattedField = field.charAt(0).toUpperCase() + field.slice(1);
+        return formattedField;
+      }).join(', ');
+      
+      toast.error(`Please complete required fields: ${errorFields}`);
+      
+      // Scroll to the first error
+      const firstErrorField = document.querySelector('.error-message');
+      if (firstErrorField) {
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
-
+  
     try {
       // Create FormData for file upload
       const formData = new FormData();
-      formData.append('title', itemData.title);
+      formData.append('title', itemData.title.trim()); // Trim spaces from title
       formData.append('price', itemData.price);
       formData.append('type', itemData.type);
       formData.append('menuType', itemData.menuType);
       formData.append('image', itemData.image);
       
-      // Append categories as array
+      // Append each category individually
       itemData.categories.forEach(category => {
-        formData.append('categories[]', category);
+        formData.append('categories', category);
       });
-
+  
+      // Show loading toast
+      const loadingToast = toast.loading('Adding menu item...');
+      
+      // Display detailed toast message
+      toast(`Adding ${itemData.title} to the menu`, { icon: '🍽️' });
+      
       const response = await fetch('http://localhost:4000/api/staff/add-menu-items', {
         method: 'POST',
-        body: formData  // Changed to FormData instead of JSON.stringify
+        body: formData
       });
-
+  
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
       if (response.ok) {
-        alert('Menu item added successfully!');
-        navigate('/menu');
+        // Success toast with dish name
+        toast.success(`${itemData.title} added successfully to the menu!`, {
+          icon: '✅',
+          duration: 4000
+        });
+        
+        // Add a small delay before navigation for better UX
+        setTimeout(() => {
+          navigate('/menu');
+        }, 1000);
       } else {
-        alert('Failed to add menu item');
+        const errorData = await response.json();
+        // Error toast with specific error message
+        toast.error(`Failed to add menu item: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding menu item:', error);
-      alert('An error occurred while adding the menu item');
+      // Error toast for exception with more detailed message
+      toast.error(`An error occurred: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -149,7 +256,9 @@ function CreateItem() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Dish Name*</label>
+                <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+                  Dish Name*
+                </label>
                 <input
                   id="title"
                   type="text"
@@ -157,12 +266,17 @@ function CreateItem() {
                   value={itemData.title}
                   onChange={handleChange}
                   placeholder="Enter dish name"
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className={`w-full p-2 border ${errors.title ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {errors.title && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.title}</p>
+                )}
               </div>
 
               <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Price (Rs)*</label>
+                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">
+                  Price (Rs)*
+                </label>
                 <input
                   id="price"
                   type="number"
@@ -170,34 +284,44 @@ function CreateItem() {
                   value={itemData.price}
                   onChange={handleChange}
                   placeholder="Enter price"
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className={`w-full p-2 border ${errors.price ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 />
+                {errors.price && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.price}</p>
+                )}
               </div>
 
               <div>
-                <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Food Type*</label>
+                <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
+                  Food Type*
+                </label>
                 <select
                   id="type"
                   name="type"
                   value={itemData.type}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className={`w-full p-2 border ${errors.type ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 >
                   <option value="" disabled>Select a type</option>
                   {itemTypes.map((type, index) => (
                     <option key={index} value={type.toLowerCase()}>{type}</option>
                   ))}
                 </select>
+                {errors.type && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.type}</p>
+                )}
               </div>
               
               <div>
-                <label htmlFor="menuType" className="block text-sm font-medium text-gray-700 mb-1">Menu Type*</label>
+                <label htmlFor="menuType" className="block text-sm font-medium text-gray-700 mb-1">
+                  Menu Type*
+                </label>
                 <select
                   id="menuType"
                   name="menuType"
                   value={itemData.menuType}
                   onChange={handleChange}
-                  className="w-full p-2 border border-gray-300 rounded-md"
+                  className={`w-full p-2 border ${errors.menuType ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                 >
                   <option value="" disabled>Select a type</option>
                   {menuTypes.map((menuType, index) => (
@@ -206,10 +330,15 @@ function CreateItem() {
                     </option>
                   ))}
                 </select>
+                {errors.menuType && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.menuType}</p>
+                )}
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">Item Image*</label>
+                <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                  Item Image*
+                </label>
                 <div className="flex flex-col space-y-2">
                   <input
                     ref={fileInputRef}
@@ -217,8 +346,11 @@ function CreateItem() {
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
-                    className="w-full p-2 border border-gray-300 rounded-md"
+                    className={`w-full p-2 border ${errors.image ? 'border-red-500' : 'border-gray-300'} rounded-md`}
                   />
+                  {errors.image && (
+                    <p className="text-red-500 text-xs mt-1 error-message">{errors.image}</p>
+                  )}
                   
                   {imagePreview && (
                     <div className="mt-2">
@@ -244,8 +376,10 @@ function CreateItem() {
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Menu Categories*</label>
-                <div className="grid grid-cols-2 gap-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Menu Categories*
+                </label>
+                <div className={`grid grid-cols-2 gap-2 p-2 border ${errors.categories ? 'border-red-500' : 'border-gray-300'} rounded-md`}>
                   {availableCategories.map((category, index) => (
                     <div key={index} className="flex items-center">
                       <input
@@ -260,13 +394,16 @@ function CreateItem() {
                     </div>
                   ))}
                 </div>
+                {errors.categories && (
+                  <p className="text-red-500 text-xs mt-1 error-message">{errors.categories}</p>
+                )}
               </div>
             </div>
 
             <div className="pt-4">
               <button
                 type="submit"
-                className="w-full bg-gray-800 text-white py-3 px-4 rounded-md"
+                className="w-full bg-gray-800 text-white py-3 px-4 rounded-md hover:bg-gray-700"
               >
                 ADD MENU ITEM
               </button>

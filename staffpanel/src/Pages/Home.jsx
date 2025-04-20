@@ -1,12 +1,12 @@
 import React from 'react'
 import Nav from '../components/Nav'
-import Menu from './Menu'
+import Dashboard from '../components/Home/dashboard'
 
 const Home = () => {
   return (
     <>
     <Nav/> 
-    
+    {/* <Dashboard/> */}
     </>
   )
 }

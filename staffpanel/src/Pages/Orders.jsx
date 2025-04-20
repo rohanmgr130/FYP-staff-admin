@@ -1,9 +1,9 @@
 import React from 'react'
 import Nav from '../components/Nav'
-import ViewOrder from '../components/Order/ViewOrder'
+import ViewOrder from '../../src/components/Order/ViewOrder'
 
 
-function Order() {
+function Orderreq() {
   return (
     <div className='flex w-full'>
     <Nav/>
@@ -13,4 +13,4 @@ function Order() {
   )
 }
 
-export default Order
+export default Orderreq

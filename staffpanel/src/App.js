@@ -5,7 +5,7 @@ import Home from './Pages/Home';
 import Menu from './Pages/Menu';
 import CreateItem from './components/Menu/addmenuform';
 import EditMenu from './components/Menu/EditMenuStaff';
-import Order from './Pages/Orders';
+import Orderreq from './Pages/Orders';
 
 
 
@@ -18,7 +18,7 @@ function App() {
         <Route path='/login' element={<Login/>} />
         <Route path='/' element={<Home/>} />
         <Route path='/menu' element={<Menu/>} />
-        <Route path='/orders' element={<Order/>} />
+        <Route path='/orders' element={<Orderreq/>} />
         <Route path='/menu/add-menu' element={<CreateItem/>} />
         <Route path='/menu/edit-menu/:id' element={<EditMenu/>} />
         
