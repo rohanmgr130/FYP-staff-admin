@@ -1941,16 +1941,16 @@ const ViewOrder = () => {
                         }}
                       />
                       <input
-                        type="text"
-                        className="w"
-                        className="w-24 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={item.price}
-                        onChange={(e) => {
-                          const newItems = [...editingOrder.items];
-                          newItems[index].price = e.target.value;
-                          setEditingOrder({...editingOrder, items: newItems});
+                          type="text"
+                          className="w-24 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={item.price}
+                          onChange={(e) => {
+                        const newItems = [...editingOrder.items];
+                        newItems[index].price = e.target.value;
+                        setEditingOrder({ ...editingOrder, items: newItems });
                         }}
                       />
+
                       <button
                         className="p-2 text-red-500 hover:text-red-700"
                         onClick={() => {

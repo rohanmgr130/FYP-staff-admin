@@ -6,6 +6,7 @@ import Menu from './Pages/Menu';
 import CreateItem from './components/Menu/addmenuform';
 import EditMenu from './components/Menu/EditMenuStaff';
 import Orderreq from './Pages/Orders';
+import Categorypage from './Pages/Categorypage';
 
 
 
@@ -19,8 +20,10 @@ function App() {
         <Route path='/' element={<Home/>} />
         <Route path='/menu' element={<Menu/>} />
         <Route path='/orders' element={<Orderreq/>} />
+        <Route path='/category' element={<Categorypage/>} />
         <Route path='/menu/add-menu' element={<CreateItem/>} />
         <Route path='/menu/edit-menu/:id' element={<EditMenu/>} />
+
         
       </Routes>
 
